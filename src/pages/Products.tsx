@@ -1,0 +1,273 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Search, ShoppingCart } from 'lucide-react'
+import { toast } from 'sonner'
+
+interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  unit: string
+  category: string
+  department_id: string
+  image_url?: string
+  in_stock: boolean
+}
+
+interface Department {
+  id: string
+  name: string
+  color: string
+}
+
+export default function Products() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('')
+  const [sortBy, setSortBy] = useState<'name' | 'price'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  useEffect(() => {
+    fetchProducts()
+    fetchDepartments()
+  }, [])
+
+  const fetchProducts = async () => {
+    try {
+      let query = supabase
+        .from('products')
+        .select('*')
+
+      if (searchTerm) {
+        query = query.ilike('name', `%${searchTerm}%`)
+      }
+
+      if (selectedDepartment) {
+        query = query.eq('department_id', selectedDepartment)
+      }
+
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' })
+
+      const { data, error } = await query
+
+      if (error) throw error
+      setProducts(data || [])
+    } catch (error) {
+      toast.error('Erro ao carregar produtos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*')
+        .order('name')
+
+      if (error) throw error
+      setDepartments(data || [])
+    } catch (error) {
+      toast.error('Erro ao carregar departamentos')
+    }
+  }
+
+  const addToList = async (product: Product) => {
+    try {
+      // Get user's active shopping list or create one
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) {
+        toast.error('Você precisa estar logado para adicionar itens à lista')
+        return
+      }
+
+      // Find or create a default list
+      const { data: lists } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .limit(1)
+
+      let listId = lists?.[0]?.id
+
+      if (!listId) {
+        const { data: newList } = await supabase
+          .from('shopping_lists')
+          .insert([{ name: 'Minha Lista', user_id: userData.user.id }])
+          .select()
+          .single()
+        listId = newList.id
+      }
+
+      // Add product to list
+      const { error } = await supabase
+        .from('list_items')
+        .insert([{
+          list_id: listId,
+          name: product.name,
+          quantity: 1,
+          unit: product.unit,
+          product_id: product.id,
+          checked: false
+        }])
+
+      if (error) throw error
+      toast.success(`${product.name} adicionado à sua lista!`)
+    } catch (error) {
+      toast.error('Erro ao adicionar produto à lista')
+    }
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price)
+  }
+
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         product.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesDepartment = !selectedDepartment || product.department_id === selectedDepartment
+    return matchesSearch && matchesDepartment
+  })
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Catálogo de Produtos</h1>
+        <p className="text-gray-600">Explore nosso catálogo completo com preços atualizados</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar produtos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+
+          <select
+            value={selectedDepartment}
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="">Todos os Departamentos</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'name' | 'price')}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="name">Ordenar por Nome</option>
+            <option value="price">Ordenar por Preço</option>
+          </select>
+
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md font-medium"
+          >
+            {sortOrder === 'asc' ? '↑ Crescente' : '↓ Decrescente'}
+          </button>
+        </div>
+
+        <div className="text-sm text-gray-600">
+          {filteredProducts.length} produto(s) encontrado(s)
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredProducts.map((product) => (
+          <div key={product.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+            <div className="p-4">
+              <div className="mb-4">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <ShoppingCart className="h-16 w-16 text-gray-400" />
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
+                <p className="text-sm text-gray-600 mb-2">{product.description}</p>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl font-bold text-primary-600">
+                    {formatPrice(product.price)}
+                  </span>
+                  <span className="text-sm text-gray-500">/{product.unit}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm px-2 py-1 rounded-full ${
+                    product.in_stock
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {product.in_stock ? 'Em estoque' : 'Indisponível'}
+                  </span>
+                  
+                  <span className="text-xs text-gray-500">
+                    {departments.find(d => d.id === product.department_id)?.name || 'Sem departamento'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => addToList(product)}
+                disabled={!product.in_stock}
+                className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white py-2 px-4 rounded-md font-medium transition-colors"
+              >
+                Adicionar à Lista
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredProducts.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <Search className="h-16 w-16 mx-auto" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum produto encontrado</h3>
+          <p className="text-gray-600">Tente ajustar seus filtros de busca</p>
+        </div>
+      )}
+    </div>
+  )
+}
