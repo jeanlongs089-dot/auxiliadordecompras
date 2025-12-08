@@ -11,7 +11,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuth()
-  const [needsVerification, setNeedsVerification] = useState(false)
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,28 +23,10 @@ export default function Login() {
       navigate('/')
     } catch (error: any) {
       const msg = String(error?.message || '')
-      if (msg.toLowerCase().includes('email') && msg.toLowerCase().includes('confirm')) {
-        setNeedsVerification(true)
-        toast.error('Email não verificado. Reenviamos a confirmação se você solicitar abaixo.')
-      } else {
-        toast.error(msg || 'Erro ao fazer login. Verifique suas credenciais.')
-      }
+      toast.error(msg || 'Erro ao fazer login. Verifique suas credenciais.')
     } finally {
       setLoading(false)
     }
-  }
-
-  const resendVerification = async () => {
-    if (!email) {
-      toast.error('Informe seu email para reenviar a verificação')
-      return
-    }
-    const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: window.location.origin } })
-    if (error) {
-      toast.error('Não foi possível reenviar a verificação')
-      return
-    }
-    toast.success('Email de verificação reenviado. Verifique sua caixa de entrada.')
   }
 
   return (
@@ -125,14 +106,8 @@ export default function Login() {
             </p>
           </div>
 
-          {needsVerification && (
-            <div className="text-center">
-              <button type="button" onClick={resendVerification} className="mt-4 text-primary-600 hover:text-primary-700 font-medium">
-                Reenviar email de verificação
-              </button>
-            </div>
-          )}
-        </form>
+          
+    </form>
       </div>
     </div>
   )

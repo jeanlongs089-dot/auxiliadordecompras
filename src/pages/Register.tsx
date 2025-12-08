@@ -12,7 +12,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { signUp } = useAuth()
+  const { signUp, signIn } = useAuth()
   const navigate = useNavigate()
 
   const validatePassword = (pwd: string) => {
@@ -40,8 +40,9 @@ export default function Register() {
 
     try {
       await signUp(email.trim(), password)
-      toast.success('Cadastro realizado com sucesso! Verifique seu email.')
-      navigate('/login')
+      await signIn(email.trim(), password)
+      toast.success('Cadastro realizado e login efetuado!')
+      navigate('/')
     } catch (error: any) {
       const msg = String(error?.message || '')
       if (msg.toLowerCase().includes('already') && msg.toLowerCase().includes('registered')) {
