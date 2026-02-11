@@ -4,14 +4,14 @@ import Landing from "@/pages/Landing";
 import Products from "@/pages/Products";
 import StoreMap from "@/pages/StoreMap";
 import Experience from "@/pages/Experience";
-  import LoyaltyClub from "@/pages/LoyaltyClub";
-  import PrebuiltLists from "@/pages/PrebuiltLists";
-  import Promotions from "@/pages/Promotions";
-  import ShoppingLists from "@/pages/ShoppingLists";
-  import NotFound from "@/pages/NotFound";
-  import Layout from "@/components/Layout";
-  import Login from "@/pages/Login";
-  import Register from "@/pages/Register";
+import LoyaltyClub from "@/pages/LoyaltyClub";
+import PrebuiltLists from "@/pages/PrebuiltLists";
+import Promotions from "@/pages/Promotions";
+import ShoppingLists from "@/pages/ShoppingLists";
+import NotFound from "@/pages/NotFound";
+import Layout from "@/components/Layout";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 
 export default function App() {
   return (
