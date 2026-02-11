@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { MapPin, Navigation, Search } from 'lucide-react'
-
+''
 interface Department {
   id: string
   name: string
@@ -25,12 +25,7 @@ export default function StoreMap() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchDepartments()
-    fetchProducts()
-  }, [])
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('departments')
@@ -42,9 +37,9 @@ export default function StoreMap() {
     } catch (error) {
       console.error('Erro ao carregar departamentos:', error)
     }
-  }
+  }, [])
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -55,37 +50,42 @@ export default function StoreMap() {
       setProducts(data || [])
     } catch (error) {
       console.error('Erro ao carregar produtos:', error)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [])
 
-  const findProductLocation = (productName: string) => {
-    const product = products.find(p => 
-      p.name.toLowerCase().includes(productName.toLowerCase())
-    )
-    
-    if (product) {
-      const department = departments.find(d => d.id === product.department_id)
-      return department
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    Promise.all([fetchDepartments(), fetchProducts()])
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
     }
-    return null
-  }
+  }, [fetchDepartments, fetchProducts])
 
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      const department = findProductLocation(searchTerm)
-      if (department) {
-        setSelectedDepartment(department)
-      } else {
-        alert('Produto não encontrado ou fora de estoque')
-      }
+  const findProductLocation = useCallback((productName: string) => {
+    const term = productName.trim().toLowerCase()
+    if (!term) return null
+    const product = products.find(p => p.name.toLowerCase().includes(term))
+    if (!product) return null
+    return departments.find(d => d.id === product.department_id) || null
+  }, [products, departments])
+
+  const handleSearch = useCallback(() => {
+    const department = findProductLocation(searchTerm)
+    if (department) {
+      setSelectedDepartment(department)
+    } else if (searchTerm.trim()) {
+      alert('Produto não encontrado ou fora de estoque')
     }
-  }
+  }, [searchTerm, findProductLocation])
 
-  const getDepartmentProducts = (departmentId: string) => {
+  const getDepartmentProducts = useCallback((departmentId: string) => {
     return products.filter(p => p.department_id === departmentId)
-  }
+  }, [products])
 
   if (loading) {
     return (

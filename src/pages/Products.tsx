@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Search, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
@@ -30,12 +30,9 @@ export default function Products() {
   const [sortBy, setSortBy] = useState<'name' | 'price'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  useEffect(() => {
-    fetchProducts()
-    fetchDepartments()
-  }, [])
+  
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       let query = supabase
         .from('products')
@@ -60,9 +57,9 @@ export default function Products() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchTerm, selectedDepartment, sortBy, sortOrder])
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('departments')
@@ -74,9 +71,22 @@ export default function Products() {
     } catch (error) {
       toast.error('Erro ao carregar departamentos')
     }
-  }
+  }, [])
 
-  const addToList = async (product: Product) => {
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    Promise.all([fetchProducts(), fetchDepartments()])
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [fetchProducts, fetchDepartments])
+
+  const addToList = useCallback(async (product: Product) => {
     try {
       // Get user's active shopping list or create one
       const { data: userData } = await supabase.auth.getUser()
@@ -106,21 +116,23 @@ export default function Products() {
       // Add product to list
       const { error } = await supabase
         .from('list_items')
-        .insert([{
-          list_id: listId,
-          name: product.name,
-          quantity: 1,
-          unit: product.unit,
-          product_id: product.id,
-          checked: false
-        }])
+        .insert([
+          {
+            list_id: listId,
+            name: product.name,
+            quantity: 1,
+            unit: product.unit,
+            product_id: product.id,
+            checked: false
+          }
+        ])
 
       if (error) throw error
       toast.success(`${product.name} adicionado à sua lista!`)
     } catch (error) {
       toast.error('Erro ao adicionar produto à lista')
     }
-  }
+  }, [])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -129,12 +141,15 @@ export default function Products() {
     }).format(price)
   }
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesDepartment = !selectedDepartment || product.department_id === selectedDepartment
-    return matchesSearch && matchesDepartment
-  })
+  const filteredProducts = useMemo(() => {
+    const term = searchTerm.toLowerCase()
+    return products.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(term) ||
+                           product.description.toLowerCase().includes(term)
+      const matchesDepartment = !selectedDepartment || product.department_id === selectedDepartment
+      return matchesSearch && matchesDepartment
+    })
+  }, [products, searchTerm, selectedDepartment])
 
   if (loading) {
     return (

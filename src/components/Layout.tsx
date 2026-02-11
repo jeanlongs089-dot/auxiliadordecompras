@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom'
 import { ShoppingCart, Menu, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import Breadcrumbs from '@/components/Breadcrumbs'
 
 interface LayoutProps {
-  children: React.ReactNode
+  children?: React.ReactNode
 }
 
 export default function Layout({ children }: LayoutProps) {
   const { user, signOut } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const isLanding = location.pathname === '/'
 
   const handleSignOut = async () => {
     await signOut()
@@ -153,8 +156,9 @@ export default function Layout({ children }: LayoutProps) {
         )}
       </nav>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {children}
+      <main className={isLanding ? '' : 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8'}>
+        {!isLanding && <Breadcrumbs />}
+        {children ?? <Outlet />}
       </main>
     </div>
   )

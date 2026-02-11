@@ -1,36 +1,36 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { Toaster } from 'sonner'
-import { AuthProvider } from './contexts/AuthContext'
-import Layout from './components/Layout'
-import Home from './pages/Home'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import ShoppingLists from './pages/ShoppingLists'
-import Products from './pages/Products'
-import StoreMap from './pages/StoreMap'
-import Admin from './pages/Admin'
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from "@/pages/Home";
+import Landing from "@/pages/Landing";
+import Products from "@/pages/Products";
+import StoreMap from "@/pages/StoreMap";
+import Experience from "@/pages/Experience";
+  import LoyaltyClub from "@/pages/LoyaltyClub";
+  import PrebuiltLists from "@/pages/PrebuiltLists";
+  import Promotions from "@/pages/Promotions";
+  import ShoppingLists from "@/pages/ShoppingLists";
+  import Layout from "@/components/Layout";
+  import Login from "@/pages/Login";
+  import Register from "@/pages/Register";
 
-function App() {
+export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/listas" element={<ShoppingLists />} />
-              <Route path="/produtos" element={<Products />} />
-              <Route path="/mapa" element={<StoreMap />} />
-              <Route path="/admin" element={<Admin />} />
-            </Routes>
-          </Layout>
-          <Toaster position="top-right" />
-        </div>
-      </Router>
-    </AuthProvider>
-  )
+    <Router basename={import.meta.env.BASE_URL}>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Landing />} />
+          <Route path="/app" element={<Home />} />
+          <Route path="/produtos" element={<Products />} />
+          <Route path="/mapa" element={<StoreMap />} />
+          <Route path="/experiencia" element={<Experience />} />
+          <Route path="/other" element={<div className="text-center text-xl">Other Page - Coming Soon</div>} />
+          <Route path="/fidelidade" element={<LoyaltyClub />} />
+          <Route path="/listas-pre-prontas" element={<PrebuiltLists />} />
+          <Route path="/listas" element={<ShoppingLists />} />
+          <Route path="/promocoes" element={<Promotions />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Route>
+      </Routes>
+    </Router>
+  );
 }
-
-export default App

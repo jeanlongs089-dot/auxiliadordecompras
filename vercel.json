@@ -1,1 +1,25 @@
-{"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.auxiliadordecompras.com"
+        }
+      ],
+      "destination": "https://auxiliadordecompras.com/$1",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

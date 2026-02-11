@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Phone, MapPin } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function Register() {
   const [email, setEmail] = useState('')
@@ -12,6 +13,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
   const { signUp, signIn } = useAuth()
   const navigate = useNavigate()
 
@@ -41,6 +44,16 @@ export default function Register() {
     try {
       await signUp(email.trim(), password)
       await signIn(email.trim(), password)
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+      if (userId) {
+        await supabase.from('profiles').upsert({
+          id: userId,
+          email: email.trim(),
+          phone: phone.trim(),
+          address: address.trim()
+        })
+      }
       toast.success('Cadastro realizado e login efetuado!')
       navigate('/')
     } catch (error: any) {
@@ -66,6 +79,43 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              Telefone
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Phone className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+              Endereço
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MapPin className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="address"
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Rua, número, bairro, cidade"
+              />
+            </div>
+          </div>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email
@@ -151,7 +201,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-md font-medium transition-colors"
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-md font-medium transition-colors"
           >
             {loading ? 'Criando conta...' : 'Criar Conta'}
           </button>
