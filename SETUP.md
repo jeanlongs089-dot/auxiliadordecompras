@@ -12,11 +12,17 @@ Transforme a experiência de compras no supermercado com tecnologia inteligente 
 
 ### 2. Configure as variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto:
+Copie o arquivo `.env.example` para `.env` na raiz do projeto:
+
+```bash
+cp .env.example .env
+```
+
+Preencha com os valores do seu projeto Supabase:
 
 ```env
-VITE_SUPABASE_URL=sua_url_aqui
-VITE_SUPABASE_ANON_KEY=sua_chave_aqui
+VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+VITE_SUPABASE_ANON_KEY=CHAVE_PUBLICA_ANON
 ```
 
 ### 3. Configure o banco de dados
