@@ -53,3 +53,23 @@ Acesse: http://localhost:5173
 - Diferencial competitivo
 - Dados sobre comportamento do cliente
 - Maior engajamento e fidelização
+## 🌐 Deploy na Vercel (trocar conta)
+1. Instale a CLI da Vercel:
+   - `npm i -g vercel`
+2. Faça login na NOVA conta/equipe:
+   - `vercel login` e confirme o e‑mail
+   - Alternativa não‑interativa: definir `VERCEL_TOKEN` como variável de ambiente
+3. Vincule o projeto local à nova conta:
+   - `vercel link` e selecione a equipe certa
+   - Escolha ou crie o projeto (ex.: auxiliadordecompras)
+4. Configure variáveis de ambiente no projeto Vercel:
+   - `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nos ambientes Preview/Production
+5. Faça o primeiro deploy:
+   - `vercel` (Preview) e `vercel --prod` (Production)
+6. Atribua o domínio:
+   - Em Project → Settings → Domains, adicione `auxiliadordecompras.com`
+   - Opcional: adicionar `www.auxiliadordecompras.com` com redirecionamento para a raiz
+7. SPA e roteamento:
+   - O arquivo `vercel.json` já contém rewrites para SPA
+8. Validação:
+   - Acesse https://auxiliadordecompras.com e verifique SSL, rotas e redirects
