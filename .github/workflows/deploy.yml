@@ -40,9 +40,9 @@ jobs:
         continue-on-error: true
 
       - name: Build
-        run: |
-          echo "BASE_PATH=/${{ github.event.repository.name }}/" >> $GITHUB_ENV
-          npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
       - name: Add SPA 404 fallback
         run: |
           cp ./dist/index.html ./dist/404.html
