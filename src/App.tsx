@@ -12,6 +12,7 @@ import NotFound from "@/pages/NotFound";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import Scanner from "@/pages/Scanner";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/listas-pre-prontas" element={<PrebuiltLists />} />
           <Route path="/listas" element={<ShoppingLists />} />
           <Route path="/promocoes" element={<Promotions />} />
+          <Route path="/scanner" element={<Scanner />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="*" element={<NotFound />} />
