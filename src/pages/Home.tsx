@@ -1,41 +1,35 @@
 import { Link } from 'react-router-dom'
+import { Barcode, ListChecks, MapPin, Search, Sparkles, Tag } from 'lucide-react'
+import { useStore } from '@/contexts/StoreContext'
+
+const actions = [
+  { to: '/produtos', title: 'Encontrar produtos', text: 'Consulte preço, disponibilidade e departamento.', icon: Search },
+  { to: '/listas', title: 'Minha lista', text: 'Organize os itens e acompanhe o total estimado.', icon: ListChecks },
+  { to: '/mapa', title: 'Mapa da loja', text: 'Descubra onde encontrar cada produto.', icon: MapPin },
+  { to: '/promocoes', title: 'Promoções', text: 'Veja oportunidades disponíveis no catálogo.', icon: Tag },
+  { to: '/listas-pre-prontas', title: 'Listas sugeridas', text: 'Comece rapidamente com uma lista temática.', icon: Sparkles },
+  { to: '/scanner', title: 'Leitor de produtos', text: 'Consulte itens usando a câmera do celular.', icon: Barcode },
+]
 
 export default function Home() {
+  const { activeStore, stores, loading } = useStore()
   return (
     <div className="max-w-6xl mx-auto py-10 px-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Auxiliador de Compras</h1>
-      <p className="text-gray-600 mb-6">Selecione uma opção para começar</p>
+      <span className="text-sm font-semibold uppercase tracking-wider text-primary-700">Sua compra, organizada</span>
+      <h1 className="text-3xl font-bold text-gray-900 mb-2 mt-2">O que você precisa hoje?</h1>
+      <p className="text-gray-600 mb-2">Busque produtos, monte sua lista e encontre o melhor caminho pela loja.</p>
+      <p className="text-sm text-gray-500 mb-7">
+        {loading ? 'Carregando loja…' : activeStore ? `Comprando em ${activeStore.name}${activeStore.address ? ` — ${activeStore.address}` : ''}` : stores.length === 0 ? 'Nenhuma loja disponível no momento.' : 'Selecione uma loja.'}
+      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link to="/produtos" className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Catálogo de Produtos</h2>
-          <p className="text-gray-600">Veja preços e detalhes dos produtos</p>
-        </Link>
-
-        <Link to="/mapa" className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Mapa da Loja</h2>
-          <p className="text-gray-600">Encontre departamentos e localizações</p>
-        </Link>
-
-        <Link to="/experiencia" className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Experiência (Leitor de Barras)</h2>
-          <p className="text-gray-600">Use a câmera para ler códigos de barras</p>
-        </Link>
-
-        <Link to="/fidelidade" className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Clube de Fidelidade</h2>
-          <p className="text-gray-600">Acumule pontos e benefícios</p>
-        </Link>
-
-        <Link to="/listas-pre-prontas" className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Listas Pré-prontas</h2>
-          <p className="text-gray-600">Sugestões para facilitar suas compras</p>
-        </Link>
-
-        <Link to="/promocoes" className="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Promoções</h2>
-          <p className="text-gray-600">Ofertas disponíveis agora</p>
-        </Link>
+        {actions.map(({ to, title, text, icon: Icon }) => (
+          <Link key={to} to={to} className="group bg-white rounded-xl border border-gray-200 p-6 hover:border-primary-300 hover:shadow-md transition">
+            <Icon className="h-7 w-7 text-primary-600 mb-5 group-hover:scale-105 transition" />
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">{title}</h2>
+            <p className="text-sm leading-6 text-gray-600">{text}</p>
+          </Link>
+        ))}
       </div>
     </div>
   )

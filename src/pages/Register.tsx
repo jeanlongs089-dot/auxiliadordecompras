@@ -55,9 +55,9 @@ export default function Register() {
         })
       }
       toast.success('Cadastro realizado e login efetuado!')
-      navigate('/')
-    } catch (error: any) {
-      const msg = String(error?.message || '')
+      navigate('/app')
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : ''
       if (msg.toLowerCase().includes('already') && msg.toLowerCase().includes('registered')) {
         toast.error('Email já registrado. Faça login ou reenvie a verificação.')
       } else if (msg) {

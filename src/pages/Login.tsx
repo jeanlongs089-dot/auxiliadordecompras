@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
@@ -20,9 +19,9 @@ export default function Login() {
     try {
       await signIn(email, password)
       toast.success('Login realizado com sucesso!')
-      navigate('/')
-    } catch (error: any) {
-      const msg = String(error?.message || '')
+      navigate('/app')
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : ''
       toast.error(msg || 'Erro ao fazer login. Verifique suas credenciais.')
     } finally {
       setLoading(false)

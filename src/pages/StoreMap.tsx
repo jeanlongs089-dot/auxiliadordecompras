@@ -1,267 +1,54 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import { MapPin, Navigation, Search } from 'lucide-react'
-''
-interface Department {
-  id: string
-  name: string
-  color: string
-  position_x: number
-  position_y: number
-  description: string
-}
+import { useMemo, useState } from 'react'
+import { Apple, Beef, Check, ChevronRight, CircleParking, Coffee, Croissant, Fish, LocateFixed, MapPin, Milk, Navigation, Search, ShoppingBasket, Sparkles, UtensilsCrossed, X } from 'lucide-react'
+import { useStore } from '@/contexts/StoreContext'
+import { trackIntent } from '@/lib/analytics'
 
-interface Product {
-  id: string
-  name: string
-  department_id: string
-  in_stock: boolean
-}
+const zones = [
+  {id:'hortifruti',name:'Hortifruti',subtitle:'Frutas, legumes e verduras',aisle:'Praça de frescos',tone:'green',icon:Apple,products:['Banana prata','Maçã gala','Tomate italiano','Alface crespa']},
+  {id:'padaria',name:'Padaria',subtitle:'Pães e confeitaria',aisle:'Parede norte',tone:'sand',icon:Croissant,products:['Pão francês','Pão de queijo','Bolo de cenoura','Croissant']},
+  {id:'acougue',name:'Açougue',subtitle:'Carnes e aves',aisle:'Balcão norte',tone:'rose',icon:Beef,products:['Patinho bovino','Peito de frango','Linguiça toscana']},
+  {id:'mercearia',name:'Mercearia',subtitle:'Itens essenciais',aisle:'Corredores 01–04',tone:'yellow',icon:ShoppingBasket,products:['Arroz integral','Feijão carioca','Macarrão','Azeite']},
+  {id:'bebidas',name:'Bebidas',subtitle:'Águas, sucos e refrescos',aisle:'Corredores 05–06',tone:'blue',icon:Coffee,products:['Água mineral','Suco de laranja','Refrigerante']},
+  {id:'laticinios',name:'Laticínios',subtitle:'Frios e refrigerados',aisle:'Parede leste',tone:'cyan',icon:Milk,products:['Leite integral','Queijo minas','Iogurte natural','Manteiga']},
+  {id:'congelados',name:'Congelados',subtitle:'Praticidade para o dia a dia',aisle:'Ilhas centrais',tone:'violet',icon:Fish,products:['Pizza congelada','Peixe','Legumes congelados']},
+  {id:'limpeza',name:'Limpeza',subtitle:'Casa e cuidados',aisle:'Corredores 07–09',tone:'lime',icon:Sparkles,products:['Detergente','Sabão em pó','Desinfetante']},
+  {id:'cafeteria',name:'Cafeteria',subtitle:'Uma pausa gostosa',aisle:'Canto nordeste',tone:'coffee',icon:Coffee,products:['Café espresso','Capuccino','Sanduíche natural']},
+]
+const aisles=[
+  {n:'01',zone:'mercearia',labels:['Arroz','Feijão']},{n:'02',zone:'mercearia',labels:['Massas','Molhos']},{n:'03',zone:'mercearia',labels:['Farinhas','Óleos']},{n:'04',zone:'mercearia',labels:['Cereais','Matinais']},
+  {n:'05',zone:'bebidas',labels:['Sucos','Águas']},{n:'06',zone:'bebidas',labels:['Refrigerantes','Cervejas']},{n:'07',zone:'limpeza',labels:['Lavanderia','Limpeza']},{n:'08',zone:'limpeza',labels:['Higiene','Papel']},{n:'09',zone:'limpeza',labels:['Pet','Utilidades']},
+]
 
-export default function StoreMap() {
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
-
-  const fetchDepartments = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('*')
-        .order('name')
-
-      if (error) throw error
-      setDepartments(data || [])
-    } catch (error) {
-      console.error('Erro ao carregar departamentos:', error)
-    }
-  }, [])
-
-  const fetchProducts = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, department_id, in_stock')
-        .eq('in_stock', true)
-
-      if (error) throw error
-      setProducts(data || [])
-    } catch (error) {
-      console.error('Erro ao carregar produtos:', error)
-    }
-  }, [])
-
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    Promise.all([fetchDepartments(), fetchProducts()])
-      .catch(() => {})
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-    return () => {
-      mounted = false
-    }
-  }, [fetchDepartments, fetchProducts])
-
-  const findProductLocation = useCallback((productName: string) => {
-    const term = productName.trim().toLowerCase()
-    if (!term) return null
-    const product = products.find(p => p.name.toLowerCase().includes(term))
-    if (!product) return null
-    return departments.find(d => d.id === product.department_id) || null
-  }, [products, departments])
-
-  const handleSearch = useCallback(() => {
-    const department = findProductLocation(searchTerm)
-    if (department) {
-      setSelectedDepartment(department)
-    } else if (searchTerm.trim()) {
-      alert('Produto não encontrado ou fora de estoque')
-    }
-  }, [searchTerm, findProductLocation])
-
-  const getDepartmentProducts = useCallback((departmentId: string) => {
-    return products.filter(p => p.department_id === departmentId)
-  }, [products])
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Mapa da Loja</h1>
-        <p className="text-gray-600">Encontre produtos e departamentos facilmente</p>
-      </div>
-
-      {/* Search Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center space-x-4">
-          <div className="flex-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar produto (ex: Arroz, Feijão, Leite)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            />
-          </div>
-          <button
-            onClick={handleSearch}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-md font-medium flex items-center space-x-2"
-          >
-            <Navigation className="h-5 w-5" />
-            <span>Localizar</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Store Map */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Planta da Loja</h2>
-            
-            {/* Interactive Map */}
-            <div className="relative bg-gray-100 rounded-lg p-8 min-h-96">
-              <div className="absolute inset-0 p-8">
-                <svg viewBox="0 0 400 300" className="w-full h-full">
-                  {/* Store Layout */}
-                  <rect x="0" y="0" width="400" height="300" fill="#f3f4f6" stroke="#d1d5db" strokeWidth="2"/>
-                  
-                  {/* Entrance */}
-                  <rect x="180" y="290" width="40" height="10" fill="#22c55e"/>
-                  <text x="200" y="285" textAnchor="middle" className="text-xs fill-green-700">ENTRADA</text>
-                  
-                  {/* Departments */}
-                  {departments.map((dept, index) => {
-                    const cols = 3
-                    // const rows = Math.ceil(departments.length / cols)
-                    const col = index % cols
-                    const row = Math.floor(index / cols)
-                    const x = 50 + col * 100
-                    const y = 50 + row * 80
-                    
-                    return (
-                      <g key={dept.id}>
-                        <rect
-                          x={x}
-                          y={y}
-                          width="80"
-                          height="60"
-                          fill={selectedDepartment?.id === dept.id ? '#dcfce7' : dept.color}
-                          stroke={selectedDepartment?.id === dept.id ? '#16a34a' : '#9ca3af'}
-                          strokeWidth={selectedDepartment?.id === dept.id ? '3' : '1'}
-                          className="cursor-pointer hover:opacity-80"
-                          onClick={() => setSelectedDepartment(dept)}
-                        />
-                        <text
-                          x={x + 40}
-                          y={y + 25}
-                          textAnchor="middle"
-                          className="text-xs font-medium fill-gray-800"
-                        >
-                          {dept.name}
-                        </text>
-                        <text
-                          x={x + 40}
-                          y={y + 40}
-                          textAnchor="middle"
-                          className="text-xs fill-gray-600"
-                        >
-                          {getDepartmentProducts(dept.id).length} produtos
-                        </text>
-                      </g>
-                    )
-                  })}
-                </svg>
-              </div>
-              
-              {selectedDepartment && (
-                <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs">
-                  <h3 className="font-semibold text-gray-900 mb-2">{selectedDepartment.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{selectedDepartment.description}</p>
-                  <div className="text-sm">
-                    <strong>Produtos disponíveis:</strong>
-                    <ul className="mt-1 space-y-1">
-                      {getDepartmentProducts(selectedDepartment.id).slice(0, 5).map(product => (
-                        <li key={product.id} className="text-gray-700">• {product.name}</li>
-                      ))}
-                      {getDepartmentProducts(selectedDepartment.id).length > 5 && (
-                        <li className="text-gray-500">... e mais {getDepartmentProducts(selectedDepartment.id).length - 5} produtos</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Department List */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Departamentos</h2>
-            
-            <div className="space-y-3">
-              {departments.map((dept) => (
-                <div
-                  key={dept.id}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedDepartment?.id === dept.id
-                      ? 'bg-primary-100 border-primary-300 border'
-                      : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
-                  onClick={() => setSelectedDepartment(dept)}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: dept.color }}
-                    ></div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{dept.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        {getDepartmentProducts(dept.id).length} produtos disponíveis
-                      </p>
-                    </div>
-                    <MapPin className="h-4 w-4 text-gray-400" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {departments.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <p>Nenhum departamento cadastrado</p>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Tips */}
-          <div className="bg-primary-50 rounded-lg p-6 mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Dicas Rápidas</h3>
-            <ul className="space-y-2 text-sm text-gray-700">
-              <li>• Use a busca para encontrar produtos rapidamente</li>
-              <li>• Clique nos departamentos para ver detalhes</li>
-              <li>• Os produtos em verde estão disponíveis em estoque</li>
-              <li>• O mapa mostra a localização de cada departamento</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+export default function StoreMap(){
+  const {activeStore}=useStore();const [query,setQuery]=useState('');const [selectedId,setSelectedId]=useState('mercearia');const [categoryId,setCategoryId]=useState('all');const [route,setRoute]=useState(false);const [error,setError]=useState(false)
+  const selected=useMemo(()=>zones.find(z=>z.id===selectedId)!,[selectedId]);const Icon=selected.icon
+  const results=useMemo(()=>{const term=query.trim().toLocaleLowerCase('pt-BR');return zones.filter(z=>categoryId==='all'||z.id===categoryId).flatMap(z=>z.products.filter(p=>!term||p.toLocaleLowerCase('pt-BR').includes(term)).map(product=>({product,zone:z}))).slice(0,8)},[query,categoryId])
+  const choose=(id:string)=>{setSelectedId(id);setCategoryId(id);setRoute(false);setError(false)}
+  const chooseCategory=(id:string)=>{setCategoryId(id);setError(false);if(id!=='all')setSelectedId(id)}
+  const locate=(value=query)=>{const term=value.trim().toLocaleLowerCase('pt-BR');if(!term)return;const match=zones.find(z=>z.name.toLocaleLowerCase('pt-BR').includes(term)||z.products.some(p=>p.toLocaleLowerCase('pt-BR').includes(term)));if(!match){setError(true);setRoute(false);return}setSelectedId(match.id);setQuery(value);setError(false);setRoute(true);void trackIntent('location_viewed',activeStore?.id||null,{term:value,department_id:match.id})}
+  return <div className="store-map-shell">
+    <header className="map-hero"><div><span className="map-kicker"><LocateFixed size={14}/> MAPA INTERATIVO DA LOJA</span><h1>Sua compra,<br/><em>no melhor caminho.</em></h1><p>Uma planta real do supermercado para encontrar cada produto, corredor e serviço sem perder tempo.</p></div><div className="store-status"><span className="status-dot"/><div><small>UNIDADE SELECIONADA</small><strong>{activeStore?.name||'Mercado Central · Loja 01'}</strong></div><ChevronRight size={18}/></div></header>
+    <section className="map-search-card category-search">
+      <div className="map-search-field"><Search size={21}/><input value={query} onChange={e=>{setQuery(e.target.value);setError(false)}} onKeyDown={e=>e.key==='Enter'&&locate()} placeholder="Digite um produto: arroz, leite, detergente..." aria-label="Buscar produto"/>{query&&<button onClick={()=>{setQuery('');setError(false)}} aria-label="Limpar"><X size={16}/></button>}</div><button className="locate-button" onClick={()=>locate()}><Navigation size={17}/> Localizar</button>
+      <div className="category-browser"><div className="category-browser-head"><div><span>BUSCAR POR CATEGORIA</span><strong>Escolha um setor para filtrar os produtos</strong></div><small>{categoryId==='all'?'35 produtos de exemplo':`${zones.find(z=>z.id===categoryId)?.products.length||0} produtos neste setor`}</small></div><div className="category-chips"><button className={categoryId==='all'?'active':''} onClick={()=>chooseCategory('all')}><ShoppingBasket size={16}/><span><b>Todas</b><small>Ver tudo</small></span></button>{zones.map(z=>{const CategoryIcon=z.icon;return <button key={z.id} className={`${categoryId===z.id?'active':''} tone-chip-${z.tone}`} onClick={()=>chooseCategory(z.id)}><CategoryIcon size={16}/><span><b>{z.name}</b><small>{z.products.length} itens</small></span></button>})}</div></div>
+      {(query||categoryId!=='all')&&<div className="product-suggestions"><div className="suggestion-head"><span>{query?`RESULTADOS PARA “${query}”`:'PRODUTOS DA CATEGORIA'}</span><small>{results.length} encontrado{results.length===1?'':'s'}</small></div>{results.length>0?<div className="suggestion-grid">{results.map(({product,zone})=><button key={`${zone.id}-${product}`} onClick={()=>locate(product)}><span className={`suggestion-icon tone-${zone.tone}`}><zone.icon size={15}/></span><span><b>{product}</b><small>{zone.name} · {zone.aisle}</small></span><MapPin size={15}/></button>)}</div>:<div className="empty-suggestion"><Search size={18}/><span>Nenhum produto nesta categoria. Tente outro termo.</span></div>}</div>}
+      {error&&<p className="map-search-error">Produto não encontrado. Escolha uma categoria ou tente outro nome.</p>}
+    </section>
+    <section className="map-workspace"><div className="map-stage"><div className="map-stage-head"><div><span>PLANTA · TÉRREO</span><strong>Selecione uma gôndola ou setor</strong></div><div className="map-legend"><i/> Sua posição <b/> Rota sugerida</div></div>
+      <div className="store-floor real-floor">
+        <div className="floor-grid"/>
+        <button className={`wall-zone wall-north bakery ${selectedId==='padaria'?'selected':''}`} onClick={()=>choose('padaria')}><Croissant size={15}/><b>PADARIA</b><small>Pães · Bolos · Confeitaria</small></button>
+        <button className={`wall-zone wall-north butcher ${selectedId==='acougue'?'selected':''}`} onClick={()=>choose('acougue')}><Beef size={15}/><b>AÇOUGUE</b><small>Carnes · Aves</small></button>
+        <button className={`wall-zone wall-north cafe ${selectedId==='cafeteria'?'selected':''}`} onClick={()=>choose('cafeteria')}><Coffee size={15}/><b>CAFETERIA</b></button>
+        <button className={`wall-zone dairy-wall ${selectedId==='laticinios'?'selected':''}`} onClick={()=>choose('laticinios')}><Milk size={15}/><b>LATICÍNIOS & FRIOS</b></button>
+        <div className="aisle-field">{aisles.map(a=><button key={a.n} className={`shelf shelf-${a.zone} ${selectedId===a.zone?'selected':''}`} onClick={()=>choose(a.zone)}><span className="aisle-number">{a.n}</span><div><i/><small>{a.labels[0]}</small><i/><small>{a.labels[1]}</small><i/></div></button>)}</div>
+        <button className={`fresh-plaza ${selectedId==='hortifruti'?'selected':''}`} onClick={()=>choose('hortifruti')}><span><Apple size={17}/><b>HORTIFRUTI</b><small>Praça de frescos</small></span><div>{[1,2,3,4,5].map(n=><i key={n}/>)}</div></button>
+        <button className={`frozen-island ${selectedId==='congelados'?'selected':''}`} onClick={()=>choose('congelados')}><Fish size={14}/><b>CONGELADOS</b></button>
+        <div className="service-strip"><span>ATENDIMENTO</span><span>RETIRADA</span><span>FARMÁCIA</span></div>
+        {route&&<div className="route-path"><i/><i/><i/><i/><i/></div>}
+        <div className="checkout-row"><span>FRENTE DE CAIXA</span>{[1,2,3,4,5,6,7,8].map(n=><i key={n}>{n}</i>)}</div><div className="you-are-here"><MapPin size={15} fill="currentColor"/><span>VOCÊ ESTÁ AQUI</span></div><div className="entrance">ENTRADA PRINCIPAL ↑</div>
+      </div></div>
+      <aside className="map-detail-panel"><div className={`detail-icon tone-${selected.tone}`}><Icon size={28}/></div><span className="detail-kicker">{selected.aisle}</span><h2>{selected.name}</h2><p>{selected.subtitle}. Veja alguns dos produtos e trace uma rota desde a entrada.</p><div className="detail-location"><MapPin size={18}/><div><small>LOCALIZAÇÃO EXATA</small><strong>{selected.aisle}</strong></div></div><div className="detail-products"><span>PRODUTOS NESTE SETOR</span>{selected.products.map(p=><button key={p} onClick={()=>locate(p)}><UtensilsCrossed size={14}/>{p}<ChevronRight size={14}/></button>)}</div><button className={`route-button ${route?'active':''}`} onClick={()=>setRoute(v=>!v)}>{route?<Check size={18}/>:<Navigation size={18}/>} {route?'Rota ativa · 2 min':'Traçar rota até aqui'}</button></aside>
+    </section><footer className="map-footer-tip"><CircleParking size={21}/><div><strong>Compra inteligente</strong><span>Siga a rota sugerida e deixe os refrigerados para o final.</span></div></footer>
+  </div>
 }

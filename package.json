@@ -9,9 +9,11 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc --noEmit",
+    "test": "vitest run",
     "server:dev": "nodemon",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
-    "db:migrate:extras": "tsx scripts/apply-sql.ts",
+    "db:migrate": "tsx scripts/apply-sql.ts 20260819_add_intent_events.sql 20260819_add_shopper_features.sql",
+    "db:migrate:extras": "tsx scripts/apply-sql.ts 20251209_add_product_extras.sql",
     "db:test": "tsx scripts/connect-test.ts"
   },
   "dependencies": {
@@ -54,7 +56,8 @@
     "typescript-eslint": "^8.30.1",
     "vite": "5.4.9",
     "vite-plugin-trae-solo-badge": "^1.0.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "fdir": "6.4.0"

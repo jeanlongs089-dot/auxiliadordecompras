@@ -2,17 +2,22 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Search, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
+import { useSearchParams } from 'react-router-dom'
+import { useStore } from '@/contexts/StoreContext'
+import { trackIntent } from '@/lib/analytics'
 
 interface Product {
   id: string
   name: string
-  description: string
+  description: string | null
   price: number
   unit: string
   category: string
   department_id: string
   image_url?: string
   in_stock: boolean
+  aisle?: string | null
+  shelf?: string | null
 }
 
 interface Department {
@@ -22,10 +27,12 @@ interface Department {
 }
 
 export default function Products() {
+  const [searchParams] = useSearchParams()
+  const { activeStore } = useStore()
   const [products, setProducts] = useState<Product[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('busca') || '')
   const [selectedDepartment, setSelectedDepartment] = useState<string>('')
   const [sortBy, setSortBy] = useState<'name' | 'price'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -34,9 +41,15 @@ export default function Products() {
 
   const fetchProducts = useCallback(async () => {
     try {
+      if (!activeStore) {
+        setProducts([])
+        return
+      }
+
       let query = supabase
         .from('products')
-        .select('*')
+        .select('*, departments!inner(store_id)')
+        .eq('departments.store_id', activeStore.id)
 
       if (searchTerm) {
         query = query.ilike('name', `%${searchTerm}%`)
@@ -52,26 +65,47 @@ export default function Products() {
 
       if (error) throw error
       setProducts(data || [])
-    } catch (error) {
+    } catch {
       toast.error('Erro ao carregar produtos')
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, selectedDepartment, sortBy, sortOrder])
+  }, [activeStore, searchTerm, selectedDepartment, sortBy, sortOrder])
 
   const fetchDepartments = useCallback(async () => {
     try {
+      if (!activeStore) {
+        setDepartments([])
+        return
+      }
       const { data, error } = await supabase
         .from('departments')
         .select('*')
+        .eq('store_id', activeStore.id)
         .order('name')
 
       if (error) throw error
       setDepartments(data || [])
-    } catch (error) {
+    } catch {
       toast.error('Erro ao carregar departamentos')
     }
-  }, [])
+  }, [activeStore])
+
+  useEffect(() => {
+    const term = searchTerm.trim()
+    if (term.length < 2 || loading) return
+    const timeout = window.setTimeout(() => {
+      void trackIntent(products.length ? 'product_searched' : 'search_no_results', activeStore?.id || null, {
+        term,
+        result_count: products.length,
+      })
+    }, 600)
+    return () => window.clearTimeout(timeout)
+  }, [activeStore, loading, products.length, searchTerm])
+
+  useEffect(() => {
+    setSelectedDepartment('')
+  }, [activeStore?.id])
 
   useEffect(() => {
     let mounted = true
@@ -105,34 +139,40 @@ export default function Products() {
       let listId = lists?.[0]?.id
 
       if (!listId) {
-        const { data: newList } = await supabase
+        const { data: newList, error: listError } = await supabase
           .from('shopping_lists')
           .insert([{ name: 'Minha Lista', user_id: userData.user.id }])
           .select()
           .single()
+        if (listError || !newList) throw listError || new Error('Não foi possível criar a lista')
         listId = newList.id
       }
 
-      // Add product to list
-      const { error } = await supabase
+      const { data: existing } = await supabase
         .from('list_items')
-        .insert([
-          {
+        .select('id, quantity')
+        .eq('list_id', listId)
+        .eq('product_id', product.id)
+        .maybeSingle()
+
+      const { error } = existing
+        ? await supabase.from('list_items').update({ quantity: existing.quantity + 1, checked: false }).eq('id', existing.id)
+        : await supabase.from('list_items').insert({
             list_id: listId,
             name: product.name,
             quantity: 1,
             unit: product.unit,
             product_id: product.id,
-            checked: false
-          }
-        ])
+            checked: false,
+          })
 
       if (error) throw error
+      void trackIntent('item_added_to_list', activeStore?.id || null, { list_id: listId, product_id: product.id, quantity: 1 })
       toast.success(`${product.name} adicionado à sua lista!`)
-    } catch (error) {
+    } catch {
       toast.error('Erro ao adicionar produto à lista')
     }
-  }, [])
+  }, [activeStore])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -145,7 +185,7 @@ export default function Products() {
     const term = searchTerm.toLowerCase()
     return products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(term) ||
-                           product.description.toLowerCase().includes(term)
+                           (product.description || '').toLowerCase().includes(term)
       const matchesDepartment = !selectedDepartment || product.department_id === selectedDepartment
       return matchesSearch && matchesDepartment
     })
@@ -163,7 +203,7 @@ export default function Products() {
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Catálogo de Produtos</h1>
-        <p className="text-gray-600">Explore nosso catálogo completo com preços atualizados</p>
+        <p className="text-gray-600">Preços e disponibilidade em {activeStore?.name || 'sua loja'}</p>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -236,7 +276,7 @@ export default function Products() {
 
               <div className="mb-2">
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
-                <p className="text-sm text-gray-600 mb-2">{product.description}</p>
+                <p className="text-sm text-gray-600 mb-2">{product.description || 'Sem descrição disponível'}</p>
               </div>
 
               <div className="mb-4">
@@ -260,6 +300,7 @@ export default function Products() {
                     {departments.find(d => d.id === product.department_id)?.name || 'Sem departamento'}
                   </span>
                 </div>
+                {(product.aisle || product.shelf) && <p className="mt-2 text-xs font-medium text-primary-700">{product.aisle ? `Corredor ${product.aisle}` : ''}{product.aisle && product.shelf ? ' • ' : ''}{product.shelf ? `Prateleira ${product.shelf}` : ''}</p>}
               </div>
 
               <button
@@ -267,7 +308,7 @@ export default function Products() {
                 disabled={!product.in_stock}
                 className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white py-2 px-4 rounded-md font-medium transition-colors"
               >
-                Adicionar à Lista
+                {product.in_stock ? 'Adicionar à lista' : 'Indisponível'}
               </button>
             </div>
           </div>
